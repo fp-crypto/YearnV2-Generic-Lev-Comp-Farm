@@ -71,7 +71,7 @@ def token(interface, request):
 
 
 cToken_addresses = {
-    "WFTM": "0x5AA53f03197E08C4851CAD8C92c7922DA5857E5d"
+    "WFTM": "0xd528697008aC67A21818751A5e3c58C8daE54696"
 }
 
 
@@ -90,7 +90,7 @@ def token_whale(token):
     yield whale_addresses[token.symbol()]
 
 cToken_whale_addresses = {
-    "WFTM": "0x9258A95a684C18cFc2EAB859d22366c278bE11b3"
+    "WFTM": "0x431e81E5dfB5A24541b5Ff8762bDEF3f32F96354"
 }
 
 
@@ -139,13 +139,13 @@ def weth(interface):
     yield interface.ERC20(token_address)
 
 @pytest.fixture
-def screamComptroller(interface):
-    token_address = "0x260E596DAbE3AFc463e75B6CC05d8c46aCAcFB09"
+def ibComptroller(interface):
+    token_address = "0x4250A6D3BD57455d7C6821eECb6206F507576cD2"
     yield interface.ComptrollerI(token_address)
 
 @pytest.fixture
-def scream(interface):
-    token_address = "0xe0654C8e6fd4D733349ac7E09f6f23DA256bF475"
+def ib(interface):
+    token_address = "0x00a35FD824c717879BF370E70AC6868b95870Dfb"
     yield interface.ERC20(token_address)
 
 @pytest.fixture
@@ -189,16 +189,16 @@ def reentry_test(user, ReentryTest):
 
 
 @pytest.fixture
-def strategy(strategist, keeper, vault, Strategy, gov, cToken, spookyrouter, scream, screamComptroller, weth):
-    strategy = strategist.deploy(Strategy, vault, cToken,spookyrouter, scream, screamComptroller, weth, 1)
+def strategy(strategist, keeper, vault, Strategy, gov, cToken, spookyrouter, ib, ibComptroller, weth):
+    strategy = strategist.deploy(Strategy, vault, cToken,spookyrouter, ib, ibComptroller, weth, 1)
     strategy.setKeeper(keeper)
     vault.addStrategy(strategy, 10_000, 0, 2 ** 256 - 1, 0, {"from": gov})
     yield strategy
 
 
 @pytest.fixture
-def factory(LevCompFactory, vault, cToken, strategist, gov, spookyrouter, scream, screamComptroller, weth):
-    factory = strategist.deploy(LevCompFactory, vault, cToken,spookyrouter, scream, screamComptroller, weth, 1)
+def factory(LevCompFactory, vault, cToken, strategist, gov, spookyrouter, ib, ibComptroller, weth):
+    factory = strategist.deploy(LevCompFactory, vault, cToken,spookyrouter, ib, ibComptroller, weth, 1)
     yield factory
 
 
