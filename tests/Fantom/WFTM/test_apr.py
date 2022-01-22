@@ -40,11 +40,11 @@ def test_apr_wftm(
     vault.setManagementFee(0, {"from": gov}) # set management fee to 0 so that time works
     
 
-    strategy.setMinCompToSell(1, {"from": gov})
+    strategy.setMinCompToSell(0, {"from": gov})
     #enormousrunningstrategy.setMinWant(0, {"from": gov})
     #assert enormousrunningstrategy.minCompToSell() == 1
     strategy.harvest({"from": gov})
-    chain.sleep(21600)
+    chain.sleep(25)
 
     print("mgm fee: ", vault.managementFee())
     print("perf fee: ", vault.performanceFee())
