@@ -265,14 +265,14 @@ contract Strategy is BaseStrategy {
             uint256 supplyStart;
             uint256 supplyEnd;
             (distributionPerBlockSupply, supplyStart, supplyEnd) = liquidityMining.rewardSupplySpeeds(comp, address(cToken));
-            if (supplyStart >= block.timestamp || supplyEnd < block.timestamp){
+            if (supplyStart > block.timestamp || supplyEnd < block.timestamp){
                 distributionPerBlockSupply = 0;
             }
             
             uint256 borrowStart;
             uint256 borrowEnd;
             (distributionPerBlockBorrow, borrowStart, borrowEnd) = liquidityMining.rewardBorrowSpeeds(comp, address(cToken));
-            if (borrowStart >= block.timestamp || borrowEnd < block.timestamp){
+            if (borrowStart > block.timestamp || borrowEnd < block.timestamp){
                 distributionPerBlockBorrow = 0;
             }
         }
