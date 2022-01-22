@@ -35,6 +35,8 @@ contract Strategy is BaseStrategy {
     using Address for address;
     using SafeMath for uint256;
 
+    address private constant yfi = address(0x29b0Da86e484E1C0029B56e817912d778aC0EC69);
+
     // Comptroller address for compound.finance
     ComptrollerI public compound;
 
@@ -104,8 +106,10 @@ contract Strategy is BaseStrategy {
         // set minWant to 1e-5 want
         minWant = uint256(uint256(10)**uint256((IERC20Extended(address(want))).decimals())).div(1e5);
         minCompToSell = 0.1 ether; //may need to be changed depending on what comp is
-        collateralTarget = 0.73 ether;
         blocksToLiquidationDangerZone = 46500;
+
+        (, uint256 collateralFactorMantissa, ) = compound.markets(address(cToken));
+        collateralTarget = collateralFactorMantissa.sub(0.02 ether);
     }
 
     /*
@@ -611,15 +615,22 @@ contract Strategy is BaseStrategy {
     }
 
     function getTokenOutPathV2(address _tokenIn, address _tokenOut) internal view returns (address[] memory _path) {
-        bool isWeth = _tokenIn == address(weth) || _tokenOut == address(weth);
-        _path = new address[](isWeth ? 2 : 3);
-        _path[0] = _tokenIn;
-
-        if (isWeth) {
-            _path[1] = _tokenOut;
+        if (_tokenOut == yfi) {
+            _path = new address[](4);
+            _path[0] = _tokenIn;
+            _path[1] = address(weth); // wftm
+            _path[2] = address(0x74b23882a30290451A17c44f4F05243b6b58C76d); // weth
+            _path[3] = yfi;
         } else {
-            _path[1] = address(weth);
-            _path[2] = _tokenOut;
+            bool isWeth = _tokenIn == address(weth) || _tokenOut == address(weth);
+            _path = new address[](isWeth ? 2 : 3);
+            _path[0] = _tokenIn;
+            if (isWeth) {
+                _path[1] = _tokenOut;
+            } else {
+                _path[1] = address(weth);
+                _path[2] = _tokenOut;
+            }
         }
     }
 
