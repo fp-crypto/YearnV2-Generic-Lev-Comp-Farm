@@ -23,6 +23,13 @@ interface IERC20Extended is IERC20 {
     function symbol() external view returns (string memory);
 }
 
+interface ILiquidityMining{
+    function claimRewards(address[] memory holders, address[] memory cTokens, address[] memory rewards, bool borrowers, bool suppliers) external;
+    function rewardSupplySpeeds(address, address) external view returns (uint256, uint256, uint256);
+    function rewardBorrowSpeeds(address, address) external view returns (uint256, uint256, uint256);
+    function rewardTokensMap(address) external view returns (bool);
+}
+
 contract Strategy is BaseStrategy {
     using SafeERC20 for IERC20;
     using Address for address;
@@ -54,7 +61,7 @@ contract Strategy is BaseStrategy {
     bool public forceMigrate;
     bool public withdrawChecks;
 
-    bool public splitCompDistribution;
+    ILiquidityMining public liquidityMining;
 
     constructor(address _vault, address _cToken, address _router, address _comp, address _comptroller, address _weth, uint256 _secondsPerBlock) public BaseStrategy(_vault) {
         _initializeThis(_cToken, _router, _comp, _comptroller, _weth, _secondsPerBlock);
@@ -65,7 +72,7 @@ contract Strategy is BaseStrategy {
     }
 
     function name() external view override returns (string memory) {
-        return "GenLevCompV3NoFlash";
+        return "GenLevCompV3NoFlashIB";
     }
 
     function initialize(address _vault, address _cToken, address _router, address _comp, address _comptroller, address _weth, uint256 _secondsPerBlock) external {
@@ -81,6 +88,8 @@ contract Strategy is BaseStrategy {
         compound = ComptrollerI(_comptroller);
         require(IERC20Extended(address(want)).decimals() <= 18); // dev: want not supported
         currentRouter = IUniswapV2Router02(_router);
+
+        liquidityMining = ILiquidityMining(address(0xa9d61326709B5C2D5897e0753998DFf7F1e974Fe));
 
         //pre-set approvals
         approveTokenMax(comp, address(currentRouter));
@@ -117,10 +126,6 @@ contract Strategy is BaseStrategy {
 
     function setForceMigrate(bool _force) external onlyGovernance {
         forceMigrate = _force;
-    }
-
-    function setSplitCompDistribution(bool _split) external management {
-        splitCompDistribution = _split;
     }
 
     function setMinCompToSell(uint256 _minCompToSell) external management {
@@ -255,16 +260,21 @@ contract Strategy is BaseStrategy {
 
         uint256 distributionPerBlockSupply;
         uint256 distributionPerBlockBorrow;
-
-        if(splitCompDistribution){
-            distributionPerBlockSupply = compound.compSupplySpeeds(address(cToken));
-            distributionPerBlockBorrow = compound.compBorrowSpeeds(address(cToken));
-
-        }else{
-            //pre 062 forks
-            distributionPerBlockSupply = compound.compSpeeds(address(cToken));
-            distributionPerBlockBorrow = distributionPerBlockSupply;
+        // Do in block to prevent stack too deep error
+        {
+            uint256 supplyStart;
+            uint256 supplyEnd;
+            (distributionPerBlockSupply, supplyStart, supplyEnd) = liquidityMining.rewardSupplySpeeds(comp, address(cToken));
+            if (supplyStart >= block.timestamp || supplyEnd < block.timestamp){
+                distributionPerBlockSupply = 0;
+            }
             
+            uint256 borrowStart;
+            uint256 borrowEnd;
+            (distributionPerBlockBorrow, borrowStart, borrowEnd) = liquidityMining.rewardBorrowSpeeds(comp, address(cToken));
+            if (borrowStart >= block.timestamp || borrowEnd < block.timestamp){
+                distributionPerBlockBorrow = 0;
+            }
         }
 
         uint256 totalBorrow = cToken.totalBorrows();
@@ -578,10 +588,15 @@ contract Strategy is BaseStrategy {
         if (dontClaimComp) {
             return;
         }
-        CTokenI[] memory tokens = new CTokenI[](1);
-        tokens[0] = cToken;
 
-        compound.claimComp(address(this), tokens);
+        address[] memory holders = new address[](1);
+        holders[0] = address(this);
+        address[] memory tokens = new address[](1);
+        tokens[0] = address(cToken);
+        address[] memory rewards = new address[](1);
+        rewards[0] = comp;
+
+        liquidityMining.claimRewards(holders, tokens, rewards, true, true);
     }
 
     //sell comp function
