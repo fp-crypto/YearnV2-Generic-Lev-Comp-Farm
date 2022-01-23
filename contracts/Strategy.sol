@@ -110,6 +110,10 @@ contract Strategy is BaseStrategy {
 
         (, uint256 collateralFactorMantissa, ) = compound.markets(address(cToken));
         collateralTarget = collateralFactorMantissa.sub(0.02 ether);
+
+        address[] memory markets = new address[](1);
+        markets[0] = _cToken;
+        compound.enterMarkets(markets);
     }
 
     /*
